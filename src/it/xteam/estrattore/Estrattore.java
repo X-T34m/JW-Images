@@ -48,6 +48,10 @@ public class Estrattore {
 			int mese = cal.get(Calendar.MONTH) + 1;
 			int giorno = cal.get(Calendar.DAY_OF_MONTH);
 			link = link + anno + "/" + mese + "/" + giorno;
+			
+			//TEST
+			//link=link+"2017/3/27";
+			
 			System.out.println("Link di partenza:" + link);
 			doc = Jsoup.connect(link).get();
 			Set<LinkFigure> listaFigureLink = new HashSet<LinkFigure>();
