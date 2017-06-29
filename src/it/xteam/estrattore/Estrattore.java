@@ -47,10 +47,10 @@ public class Estrattore {
 			int anno = cal.get(Calendar.YEAR);
 			int mese = cal.get(Calendar.MONTH) + 1;
 			int giorno = cal.get(Calendar.DAY_OF_MONTH);
-			//link = link + anno + "/" + mese + "/" + giorno;
+			link = link + anno + "/" + mese + "/" + giorno;
 			
 			//TEST
-			link=link+"2017/3/27";
+			//link=link+"2017/3/27";
 			
 			System.out.println("Link di partenza:" + link);
 			doc = Jsoup.connect(link).get();
