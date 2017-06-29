@@ -21,7 +21,9 @@ public class GeneraDomande {
 
 	private static int altezza = 1000;
 	private static int larghezza = 1770;
-
+	private static int carattereTitolo=54;
+	private static int indentazioneSxTitolo=30;
+	
 	public static void genera(Document doc) {
 		List<String> listadomande = new ArrayList<String>();
 		Element linktorre = doc.select("aside").first();
@@ -32,10 +34,10 @@ public class GeneraDomande {
 			System.out.println(singola.text());
 			listadomande.add(singola.text());
 		}
-		generaImmagine3(titoloBoxDomande.text(), listadomande);
+		generaImmagine(titoloBoxDomande.text(), listadomande);
 	}
 
-	public static void generaImmagine3(String titolo, List<String> listadomande) {
+	public static void generaImmagine(String titolo, List<String> listadomande) {
 		String titoloRiquadro = titolo;
 		BufferedImage bufferedImage = new BufferedImage(larghezza, altezza, BufferedImage.TYPE_INT_RGB);
 		Graphics graphics = bufferedImage.getGraphics();
@@ -43,8 +45,21 @@ public class GeneraDomande {
 		graphics.fillRect(0, 0, 1770, 100);
 
 		graphics.setColor(Color.BLACK);
-		graphics.setFont(new Font("Verdana", Font.BOLD, 54));
-		graphics.drawString(titoloRiquadro, 30, 70);
+		graphics.setFont(new Font("Verdana", Font.BOLD, carattereTitolo));
+		int larghezzatitolo = graphics.getFontMetrics().stringWidth(titoloRiquadro);
+		
+		//Se il titolo del riquadro è più lungo dell'immagine diminuisco carattere finchè non entra...
+		while((larghezzatitolo+indentazioneSxTitolo)>larghezza){
+			carattereTitolo--;
+			graphics.setFont(new Font("Verdana", Font.BOLD, carattereTitolo));
+			larghezzatitolo = graphics.getFontMetrics().stringWidth(titoloRiquadro);
+		}
+		
+		
+		
+		
+		//System.exit(1);
+		graphics.drawString(titoloRiquadro, indentazioneSxTitolo, 70);
 
 		graphics.setColor(Color.WHITE);
 		graphics.fillRect(0, 101, 1770, 948);
