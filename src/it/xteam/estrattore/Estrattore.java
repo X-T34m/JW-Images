@@ -2,7 +2,6 @@ package it.xteam.estrattore;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URL;
@@ -11,6 +10,8 @@ import java.util.Calendar;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
 import java.util.zip.ZipOutputStream;
 
 import org.apache.commons.io.FileUtils;
@@ -28,9 +29,11 @@ public class Estrattore {
 	public static String PATH_OUTPUT = "";
 	public static String EMAIL_TO = "";
 	public static String EMAIL_CC = "";
+	static Document doc = null;
+	static List<String> linkProdotti = new ArrayList<String>();
 
 	public static void main(String[] args) {
-		Document doc = null;
+
 		try {
 
 			//if(args.length<1){
@@ -48,32 +51,34 @@ public class Estrattore {
 			int mese = cal.get(Calendar.MONTH) + 1;
 			int giorno = cal.get(Calendar.DAY_OF_MONTH);
 			link = link + anno + "/" + mese + "/" + giorno;
-			
+
 			//TEST
 			//link=link+"2017/3/27";
-			
+
 			System.out.println("Link di partenza:" + link);
 			doc = Jsoup.connect(link).get();
 			Set<LinkFigure> listaFigureLink = new HashSet<LinkFigure>();
 			List<LinkMateriale> listalink = estraiUrlMateriale(doc);
 			System.out.println("Numero link articoli: " + listalink.size());
-			for (LinkMateriale str : listalink) {
+
+			listalink.stream().forEach(str -> {
 				System.out.println(str.getTipo() + " - " + str.getUrl());
-				doc = Jsoup.connect(str.getUrl()).get();
+				try {
+					doc = Jsoup.connect(str.getUrl()).get();
+				}
+				catch (Exception e) {
+					e.printStackTrace();
+				}
 				Set<LinkFigure> listaFigure = Estrattore.estraiUrlFigure(str.getTipo(), doc);
 				listaFigureLink.addAll(listaFigure);
-			}
-			List<String> linkProdotti = new ArrayList<String>();
+			});
+
 			System.out.println("\n\nNumero immagini recuperate (senza doppioni): " + listaFigureLink.size());
-			for (LinkFigure str : listaFigureLink) {
-				System.out.println(str.getTipo() + " - " + str.getUrl());
-				boolean esiste = checkIfExists(linkProdotti, str.getUrl());
-				if (!esiste) {
-					File newFileImg = new File(Estrattore.PATH_OUTPUT + str.getTipo() + "/" + System.currentTimeMillis() + ".jpg");
-					FileUtils.copyURLToFile(new URL(str.getUrl()), newFileImg);
-					linkProdotti.add(str.getUrl());
-				}
-			}
+
+			listaFigureLink.stream().filter(str -> {
+				return !checkIfExists(str.getUrl());
+			}).forEach(Estrattore::create);
+
 			System.out.println("Inizio produzione immagine domande di ripasso");
 			GeneraDomande.genera(doc);
 			System.out.println("Immagine generata");
@@ -100,6 +105,29 @@ public class Estrattore {
 			System.out.println("Errore grave...");
 			e.printStackTrace();
 		}
+	}
+
+	public static boolean checkIfExists(String url) {
+		for (int i = 0; i < linkProdotti.size(); i++) {
+			String daVerificare = linkProdotti.get(i);
+			if (url.equalsIgnoreCase(daVerificare)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public static void create(LinkFigure str) {
+		System.out.println(str.getTipo() + " - " + str.getUrl());
+
+		File newFileImg = new File(Estrattore.PATH_OUTPUT + str.getTipo() + "/" + System.currentTimeMillis() + ".jpg");
+		try {
+			FileUtils.copyURLToFile(new URL(str.getUrl()), newFileImg);
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+		}
+		linkProdotti.add(str.getUrl());
 	}
 
 	public static boolean comprimiCartella(String nomeCartella) {
@@ -129,16 +157,6 @@ public class Estrattore {
 		return (true);
 	}
 
-	private static boolean checkIfExists(List<String> linkProdotti, String url) {
-		for (int i = 0; i < linkProdotti.size(); i++) {
-			String daVerificare = linkProdotti.get(i);
-			if (url.equalsIgnoreCase(daVerificare)) {
-				return (true);
-			}
-		}
-		return false;
-	}
-
 	/**
 	 * Recupera la lista dei link in cui cercare le figure. Esclusi cantici e puntamenti a libri presentazioni
 	 * 
@@ -157,19 +175,13 @@ public class Estrattore {
 
 		////// EFFICACI
 		Elements linkefficaci = SEZIONE_EFFICACI.select("a");
-		for (Element ele : linkefficaci) {
-			if (!ele.toString().contains("Cantic") && !ele.toString().contains("finder")) {
-				listaUrl.add(new LinkMateriale("EFFICACI", BASE_URL + ele.attr("href")));
-			}
-		}
+		linkefficaci.stream().filter(ele -> !ele.toString().contains("Cantic") && !ele.toString().contains("finder"))
+				.forEach(ele -> listaUrl.add(new LinkMateriale("EFFICACI", BASE_URL + ele.attr("href"))));
 
 		///// VITA
 		Elements linkvita = SEZIONE_VITA.select("a");
-		for (Element ele : linkvita) {
-			if (!ele.toString().contains("Cantic") && !ele.toString().contains("finder")) {
-				listaUrl.add(new LinkMateriale("VITA", BASE_URL + ele.attr("href")));
-			}
-		}
+		linkvita.stream().filter(ele -> !ele.toString().contains("Cantic") && !ele.toString().contains("finder"))
+				.forEach(ele -> listaUrl.add(new LinkMateriale("VITA", BASE_URL + ele.attr("href"))));
 
 		///// TORRE
 		Element linktorre = doc.select("div.groupTOC").first();
@@ -183,7 +195,7 @@ public class Estrattore {
 		Elements EL_FIGURE = doc.select("figure");
 		Elements EL_IMAGE = EL_FIGURE.select("img");
 
-		for (Element elem : EL_IMAGE) {
+		EL_IMAGE.stream().forEach(elem -> {
 			String url_image = elem.select("img").attr("src");
 			if (url_image.startsWith("http")) {
 				listaFigure.add(new LinkFigure(tipo, url_image));
@@ -191,8 +203,7 @@ public class Estrattore {
 			else {
 				listaFigure.add(new LinkFigure(tipo, BASE_URL + url_image));
 			}
-
-		}
+		});
 
 		return (listaFigure);
 	}// End method...
